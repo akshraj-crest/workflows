@@ -322,19 +322,26 @@ steps:
                   # Type-aware per-item section - reuses every case already
                   # built across the other three relationship workflows;
                   # this action introduces no new object type. Any type not
-                  # covered (analysis, submission - not confirmed populated
-                  # on any URL tried) falls through to the generic fields
-                  # below.
+                  # covered (submission - not confirmed populated on any URL
+                  # tried) falls through to the generic fields below.
                   - name: build_item_note_section
                     type: data.set
                     with:
                       item_note_section: |-
                         {%- assign a = foreach.item.attributes -%}
                         {%- assign t = foreach.item.type -%}
-                        {%- assign stats = a.last_analysis_stats -%}
+                        {%- assign stats = a.last_analysis_stats | default: a.stats -%}
                         {%- assign tags = a.tags | default: consts.empty_arr -%}
                         ### {{ t }}: {{ foreach.item.id }}
                         {%- case t %}
+                          {%- when 'url_analysis' %}
+                        {%- assign cat_pairs = a.categories | entries -%}
+                        {%- if cat_pairs.size > 0 %}
+                        - **Categories:** {% for pair in cat_pairs limit: 5 %}{{ pair.value }} ({{ pair.key }}){% unless forloop.last %}, {% endunless %}{% endfor %}
+                        {%- endif %}
+                        {%- if a.date != blank %}
+                        - **Analysis date:** {{ a.date | date: '%Y-%m-%d' }}
+                        {%- endif %}
                           {%- when 'domain' %}
                         {%- if a.threat_severity.threat_severity_level != blank %}
                         - **Severity:** {{ a.threat_severity.threat_severity_level }}{% if a.threat_severity.level_description != blank %} ({{ a.threat_severity.level_description }}){% endif %}
@@ -583,7 +590,7 @@ steps:
 
                     _Managed by the GTI URL Relationships workflow. This note is replaced on every run; record your own analysis in a separate note._
 
-                    Observed on `{{ variables.field_name }}` - [View URL on GTI]({{ consts.gti_ui_base }}/{{ variables.observable | url_encode }})
+                    Observed on `{{ variables.field_name }}` - [View URL on GTI]({{ consts.gti_ui_base }}/{{ variables.observable | sha256 }})
                     Run [{{ workflow.name }}:{{ execution.id }}]({{ execution.url }})
 
                     ---
@@ -677,7 +684,7 @@ steps:
 
                 _Managed by the GTI URL Relationships workflow. This note is replaced on every run and describes only what this run fetched; record your own analysis in a separate note._
 
-                Observed on `{{ variables.field_name }}` - [View URL on GTI]({{ consts.gti_ui_base }}/{{ variables.observable | url_encode }})
+                Observed on `{{ variables.field_name }}` - [View URL on GTI]({{ consts.gti_ui_base }}/{{ variables.observable | sha256 }})
                 Run [{{ workflow.name }}:{{ execution.id }}]({{ execution.url }})
 
                 ---

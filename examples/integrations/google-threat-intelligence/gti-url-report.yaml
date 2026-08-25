@@ -274,7 +274,7 @@ steps:
 
                     _Managed by the GTI URL Report workflow. This note is replaced on every run; record your own analysis in a separate note._
 
-                    Observed on `{{ variables.field_name }}` - [View URL on GTI]({{ consts.gti_ui_base }}/{{ variables.observable | url_encode }})
+                    Observed on `{{ variables.field_name }}` - [View URL on GTI]({{ consts.gti_ui_base }}/{{ variables.observable | sha256 }})
                     Run [{{ workflow.name }}:{{ execution.id }}]({{ execution.url }})
 
                     ---
@@ -458,7 +458,7 @@ steps:
 
                 _Managed by the GTI URL Report workflow. This note is replaced on every run; record your own analysis in a separate note._
 
-                Observed on `{{ variables.field_name }}` - [View URL on GTI]({{ consts.gti_ui_base }}/{{ variables.observable | url_encode }})
+                Observed on `{{ variables.field_name }}` - [View URL on GTI]({{ consts.gti_ui_base }}/{{ variables.observable | sha256 }})
                 Run [{{ workflow.name }}:{{ execution.id }}]({{ execution.url }})
 
                 ---
