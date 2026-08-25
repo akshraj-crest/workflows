@@ -130,7 +130,7 @@ Turn on **Run per alert** on the `.workflows` connector when using a rule action
 
 ### Choosing which alert fields are read
 
-Each workflow reads observables from the alert fields listed in `consts.observable_fields`, resolved by dotted path at run time. Add or remove entries there and no step needs editing:
+Each workflow reads observables from the alert fields listed in `consts.observable_fields`, resolved by dotted path at run time. We have provided some default example fields - please update them according to your own needs. Add or remove entries there and no step needs editing:
 
 ```yaml
 consts:

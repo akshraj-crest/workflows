@@ -20,6 +20,7 @@ consts:
   gti_connector_id: REPLACE_WITH_GTI_CONNECTOR_ID
   index: gti-soar-ip-report
   # Alert fields checked in order; a value repeated across fields is enriched once.
+  # Default example fields - please update according to your own needs.
   observable_fields: ["source.ip", "destination.ip", "host.ip", "client.ip", "server.ip"]
   gti_ui_base: https://www.virustotal.com/gui/ip-address
   empty_arr: []

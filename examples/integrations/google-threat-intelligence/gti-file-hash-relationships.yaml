@@ -22,6 +22,8 @@ tags:
 consts:
   gti_connector_id: REPLACE_WITH_GTI_CONNECTOR_ID
   index: gti-soar-file-relationship
+  # Alert fields checked in order; a value repeated across fields is enriched once.
+  # Default example fields - please update according to your own needs.
   observable_fields: ["file.hash.sha256", "process.hash.sha256", "dll.hash.sha256"]
   gti_ui_base: https://www.virustotal.com/gui/file
   empty_arr: []
