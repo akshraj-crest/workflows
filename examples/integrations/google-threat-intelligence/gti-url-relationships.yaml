@@ -3,6 +3,7 @@
 # more to give, and indexes every related object as its own document. Writes
 # one summary note (one section per item) and an alert tag when run against
 # an alert. Manual only, same reasoning as GTI IP Address Relationships.
+version: '1'
 name: GTI URL Relationships
 description: >-
   Retrieve objects related to a URL by relationship type (e.g. redirects,
@@ -27,7 +28,6 @@ consts:
   gti_ui_base: https://www.virustotal.com/gui/url
   empty_arr: []
   page_size: 40
-  max_pages_safety: 250
 
 triggers:
   - type: manual
@@ -57,8 +57,8 @@ triggers:
           rarely needed - defaults to 40, GTI's own maximum for this
           endpoint). This does not cap the total number of items collected:
           the workflow still pages until GTI reports no more, or the safety
-          backstop (consts.max_pages_safety) is hit; it only changes how many
-          items are requested per underlying API call.
+          backstop (250 pages, see the paginate step) is hit; it only changes
+          how many items are requested per underlying API call.
       - name: cursor
         type: string
         required: false
@@ -84,9 +84,8 @@ triggers:
 steps:
 
   # Self-provisions this workflow's index template so mapping settings apply
-  # before the first real write. Same reasoning and settings as GTI IP
-  # Address Relationships - see gti-workflow-design-decisions.md's "Index
-  # bootstrapping" section.
+  # before the first real write. Same reasoning and settings as
+  # gti-ip-address-relationships.yaml's bootstrap_index_template step.
   - name: bootstrap_index_template
     type: elasticsearch.request
     with:
@@ -236,7 +235,9 @@ steps:
       - name: paginate
         type: while
         condition: "${{ variables.has_more == true }}"
-        # Literal number, not a template - keep in sync with consts.max_pages_safety by hand.
+        # Backstop only (GTI's own cursor going blank is the real stop condition), so a
+        # vendor-side cursor bug can't loop forever. `max-iterations` only accepts a literal
+        # number or {limit, on-limit} - not a template - so this can't be pulled from consts.
         max-iterations: 250
         steps:
 

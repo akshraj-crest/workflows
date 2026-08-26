@@ -3,6 +3,7 @@
 # run against an alert (paths 1/2) it also writes one summary note (one
 # section per report) and an alert tag; a standalone run (path 3) only
 # indexes.
+version: '1'
 name: GTI File Sandbox Behaviour
 description: >-
   Retrieve Google Threat Intelligence sandbox detonation reports for a file
@@ -25,9 +26,6 @@ consts:
   gti_ui_base: https://www.virustotal.com/gui/file
   empty_arr: []
   page_size: 40
-  # Backstop only (GTI's own cursor going blank is the real stop condition),
-  # so a vendor-side cursor bug can't loop forever.
-  max_pages_safety: 250
   # processes_tree excluded - it's recursive, a flat size count would undercount.
   behaviour_activity_fields: "processes_created,processes_terminated,files_opened,files_written,registry_keys_set,registry_keys_opened,mutexes_created,modules_loaded,dns_lookups,command_executions,windows_hidden,mitre_attack_techniques,signature_matches,mbc"
 
@@ -222,7 +220,9 @@ steps:
       - name: paginate
         type: while
         condition: "${{ variables.has_more == true }}"
-        # Literal number, not a template - keep in sync with consts.max_pages_safety by hand.
+        # Backstop only (GTI's own cursor going blank is the real stop condition), so a
+        # vendor-side cursor bug can't loop forever. `max-iterations` only accepts a literal
+        # number or {limit, on-limit} - not a template - so this can't be pulled from consts.
         max-iterations: 250
         steps:
 

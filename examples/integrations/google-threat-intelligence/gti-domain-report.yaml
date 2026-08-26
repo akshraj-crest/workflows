@@ -3,6 +3,7 @@
 # writes a summary note and an alert tag; a standalone run (path 3) only
 # indexes. Failure handling, index bootstrapping, and note structure all
 # follow the same pattern as GTI IP Address Report.
+version: '1'
 name: GTI Domain Report
 description: >-
   Retrieve the Google Threat Intelligence reputation and detection report for

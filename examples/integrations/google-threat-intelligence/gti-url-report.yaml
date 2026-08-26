@@ -2,6 +2,7 @@
 # the full response. When run against an alert (paths 1/2) it also writes a
 # summary note and an alert tag; a standalone run (path 3) only indexes.
 # getUrlReport takes no limit/cursor - a single-object report, not paginated.
+version: '1'
 name: GTI URL Report
 description: >-
   Retrieve the Google Threat Intelligence reputation and detection report for

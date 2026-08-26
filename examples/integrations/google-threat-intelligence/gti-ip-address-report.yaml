@@ -3,6 +3,7 @@
 # writes a summary note and an alert tag; a standalone run (path 3) only
 # indexes. getIpReport takes no limit/cursor - a single-object report, not
 # paginated.
+version: '1'
 name: GTI IP Address Report
 description: >-
   Retrieve the Google Threat Intelligence reputation and detection report for

@@ -4,6 +4,7 @@
 # indexes. A different action from File Sandbox Behaviour (sandbox
 # detonation) and MITRE ATT&CK Techniques (technique tree) - this is the
 # reputation/detection report.
+version: '1'
 name: GTI File Hash Report
 description: >-
   Retrieve the Google Threat Intelligence reputation and detection report for

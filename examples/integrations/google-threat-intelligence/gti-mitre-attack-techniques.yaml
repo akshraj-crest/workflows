@@ -2,6 +2,7 @@
 # across its sandboxes and indexes the full response. When run against an
 # alert (paths 1/2) it also writes a summary note and an alert tag; a
 # standalone run (path 3) only indexes.
+version: '1'
 name: GTI MITRE ATT&CK Techniques
 description: >-
   Retrieve the MITRE ATT&CK tactics and techniques Google Threat Intelligence
