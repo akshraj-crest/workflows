@@ -39,6 +39,8 @@ triggers:
         description: >-
           SHA-256, SHA-1, or MD5 hash of the file. Leave blank when running
           against an alert, the hash is read from the alert instead.
+      # Safe to require: this workflow has no alert trigger, so there's no automatic
+      # run this could ever block.
       - name: relationship
         type: string
         required: true
@@ -180,17 +182,16 @@ steps:
       {%- assign sep = '' -%}
       {%- if event.alerts[0] != blank -%}
         {%- assign fields = consts.observable_fields -%}
-        {%- assign seen = '' -%}
+        {%- assign seen = consts.empty_arr -%}
         {%- for f in fields -%}
           {%- assign parts = f | strip | split: '.' -%}
           {%- assign node = event.alerts[0] -%}
           {%- for p in parts -%}{%- assign node = node[p] -%}{%- endfor -%}
           {%- if node != blank -%}
-            {%- assign probe = '|' | append: node | append: '|' -%}
-            {%- unless seen contains probe -%}
+            {%- unless seen contains node -%}
               {{ sep }}{"field":"{{ f | strip }}","value":"{{ node }}"}
               {%- assign sep = ',' -%}
-              {%- assign seen = seen | append: probe -%}
+              {%- assign seen = seen | push: node -%}
             {%- endunless -%}
           {%- endif -%}
         {%- endfor -%}

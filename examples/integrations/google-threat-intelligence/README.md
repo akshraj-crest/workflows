@@ -150,9 +150,10 @@ ceiling by design. Each page's reports are indexed immediately and then discarde
 for a single pass at the end, so memory stays bounded to one page (40 reports) regardless of how many total
 reports a hash has. A large iteration count (250 pages, set on the `paginate` step's `max-iterations`) exists purely as a
 backstop against a vendor-side cursor bug that should never fire in practice; if it ever does, that's
-surfaced as an "unexpectedly large result set" callout in the note rather than failing silently. On a
-standalone run only, an optional `cursor` input lets you resume from the cursor surfaced in that callout
-if the backstop is ever hit.
+surfaced as an "unexpectedly large result set" callout in the note rather than failing silently. An
+optional `limit` input overrides the per-page fetch size (defaults to 40, GTI's own maximum for this
+endpoint) - it does not cap the total number of reports collected. On a standalone run only, an optional
+`cursor` input lets you resume from the cursor surfaced in that callout if the backstop is ever hit.
 
 `getIpRelationship`/`getDomainRelationship`/`getFileRelationship`/`getUrlRelationship` all page via
 `limit`/`cursor` the identical way, to full exhaustion, using the same `while` loop and safety backstop
@@ -162,8 +163,8 @@ any single hash's sandbox history (`communicating_files` on a busy IP has been o
 so the safety backstop matters more here than anywhere else in this project, but the design is the same:
 page until GTI's cursor goes blank, index each page immediately, write exactly one note per
 observable+relationship pair covering every page fetched - never one page per run and never one note per
-page. `limit` on these four workflows only overrides the per-page fetch size (defaults to 40, GTI's own
-maximum for these endpoints); it does not cap the total items collected. `cursor` is only meaningful on a
+page. `limit` on these four workflows works the same way as on File Sandbox Behaviour above - it only
+overrides the per-page fetch size, not the total items collected. `cursor` is only meaningful on a
 standalone run that previously hit the safety backstop, to resume from where it left off.
 
 ## Destination indices

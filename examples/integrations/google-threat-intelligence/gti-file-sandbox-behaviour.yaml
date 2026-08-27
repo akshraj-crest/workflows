@@ -39,6 +39,16 @@ triggers:
         description: >-
           SHA-256, SHA-1 or MD5 hash. Leave blank when running against an
           alert, the hash is read from the alert instead.
+      - name: limit
+        type: number
+        required: false
+        description: >-
+          Page size for each internal GTI fetch while paging (advanced,
+          rarely needed - defaults to 40, GTI's own maximum for this
+          endpoint). This does not cap the total number of reports collected:
+          the workflow still pages until GTI reports no more, or the safety
+          backstop (250 pages, see the paginate step) is hit; it only changes
+          how many reports are requested per underlying API call.
       - name: cursor
         type: string
         required: false
@@ -161,7 +171,7 @@ steps:
       {%- assign sep = '' -%}
       {%- if event.alerts[0] != blank -%}
         {%- assign fields = consts.observable_fields -%}
-        {%- assign seen = '' -%}
+        {%- assign seen = consts.empty_arr -%}
         {%- for f in fields -%}
           {%- assign parts = f | strip | split: '.' -%}
           {%- assign node = event.alerts[0] -%}
@@ -169,11 +179,10 @@ steps:
           {%- if node != blank -%}
             {%- assign len = node | size -%}
             {%- if len == 32 or len == 40 or len == 64 -%}
-              {%- assign probe = '|' | append: node | append: '|' -%}
-              {%- unless seen contains probe -%}
+              {%- unless seen contains node -%}
                 {{ sep }}{"field":"{{ f | strip }}","value":"{{ node }}"}
                 {%- assign sep = ',' -%}
-                {%- assign seen = seen | append: probe -%}
+                {%- assign seen = seen | push: node -%}
               {%- endunless -%}
             {%- endif -%}
           {%- endif -%}
@@ -231,7 +240,7 @@ steps:
             connector-id: "{{ consts.gti_connector_id }}"
             with:
               fileHash: "{{ variables.observable }}"
-              limit: "${{ consts.page_size }}"
+              limit: "${{ inputs.limit | default: consts.page_size }}"
               cursor: "{{ variables.page_cursor }}"
             on-failure:
               retry:

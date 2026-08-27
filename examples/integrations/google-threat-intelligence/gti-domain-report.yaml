@@ -138,17 +138,16 @@ steps:
       {%- assign sep = '' -%}
       {%- if event.alerts[0] != blank -%}
         {%- assign fields = consts.observable_fields -%}
-        {%- assign seen = '' -%}
+        {%- assign seen = consts.empty_arr -%}
         {%- for f in fields -%}
           {%- assign parts = f | strip | split: '.' -%}
           {%- assign node = event.alerts[0] -%}
           {%- for p in parts -%}{%- assign node = node[p] -%}{%- endfor -%}
           {%- if node != blank -%}
-            {%- assign probe = '|' | append: node | append: '|' -%}
-            {%- unless seen contains probe -%}
+            {%- unless seen contains node -%}
               {{ sep }}{"field":"{{ f | strip }}","value":"{{ node }}"}
               {%- assign sep = ',' -%}
-              {%- assign seen = seen | append: probe -%}
+              {%- assign seen = seen | push: node -%}
             {%- endunless -%}
           {%- endif -%}
         {%- endfor -%}
