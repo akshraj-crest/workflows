@@ -2,7 +2,7 @@
 
 Google Threat Intelligence enrichment workflows for Elastic Security.
 
-## Workflows (10)
+## Workflows (12)
 
 | Workflow | Description |
 |----------|-------------|
@@ -16,6 +16,8 @@ Google Threat Intelligence enrichment workflows for Elastic Security.
 | [GTI File Hash Relationships](./gti-file-hash-relationships.yaml) | Retrieve objects related to a file by relationship type (e.g. contacted domains, dropped files, sandbox behaviours - 49 relationship values, by far the largest of the four GTI relationship actions). Indexes every related object as its own document and summarises the fetched batch on the triggering alert. Manual only. |
 | [GTI URL Report](./gti-url-report.yaml) | Retrieve the GTI reputation and detection report for a URL (verdict, threat score, last analysis stats, final resolved destination, HTTP response metadata, categorisation, tags). Indexes the full response and summarises it on the triggering alert. No pagination, same shape as the other three report workflows. |
 | [GTI URL Relationships](./gti-url-relationships.yaml) | Retrieve objects related to a URL by relationship type (e.g. redirects, contacted domains, downloaded files - 31 relationship values). Indexes every related object as its own document and summarises the fetched batch on the triggering alert. Manual only. |
+| [GTI URL Scan (Public)](./gti-url-scan-public.yaml) | Submit a URL to GTI for public analysis, poll until the scan completes, then retrieve and index the full report. Unlike the report/relationship workflows above, this one submits new content to GTI rather than reading an already-computed verdict, so it chains three actions (submit, poll, retrieve) in one execution instead of one lookup. Public sibling of GTI URL Scan (Private) below - same pipeline, but a fresh scan's multi-engine stats are populated immediately (unlike private) and the note links to GTI's real public GUI page. |
+| [GTI URL Scan (Private)](./gti-url-scan-private.yaml) | Submit a URL to GTI for private analysis (not shared with the wider GTI community), poll until the scan completes, then retrieve and index the full report. Unlike every other workflow above, this one submits new content to GTI rather than reading an already-computed verdict, so it chains three actions (submit, poll, retrieve) in one execution instead of one lookup. Summarises the result on the triggering alert. |
 
 ## Prerequisites
 
@@ -140,7 +142,8 @@ pattern before the request is made. On the two IP workflows, `observable_fields`
 `["source.ip", "destination.ip", "host.ip", "client.ip", "server.ip"]` - no length/format guard is applied
 there, since these are ECS `ip`-typed fields, already validated by the mapping before they ever reach an
 alert. Domain Report defaults to `["url.domain", "dns.question.name", "destination.domain",
-"source.domain"]`; URL Report defaults to `["url.full", "url.original"]`.
+"source.domain"]`; URL Report and both URL Scan workflows (public and private) all default to
+`["url.full", "url.original"]`.
 
 ### Pagination (GTI File Sandbox Behaviour and all four relationship workflows)
 
@@ -167,6 +170,29 @@ page. `limit` on these four workflows works the same way as on File Sandbox Beha
 overrides the per-page fetch size, not the total items collected. `cursor` is only meaningful on a
 standalone run that previously hit the safety backstop, to resume from where it left off.
 
+### Polling (GTI URL Scan (Public) and GTI URL Scan (Private))
+
+Unlike every other workflow above, these two submit new content to GTI (`scanUrl`/`scanPrivateUrl`) rather
+than reading an already-computed verdict, then poll (`getAnalysis`/`getPrivateAnalysis`) until the scan
+finishes before retrieving the report (`getUrlScanReport`/`getPrivateUrlReport`) - three actions chained in
+one execution, not one lookup. The poll loop checks status immediately each iteration and only sleeps 10
+seconds if the scan is still `queued`/`in-progress`, up to 60 iterations (a 10-minute ceiling), modeled on
+Censys's own shipped `Rescan` workflow's identical submit-poll-refetch shape. If GTI hasn't finished by the
+time the ceiling is hit, the run is marked `partial` rather than `failed` - the scan was genuinely submitted
+and is still processing on GTI's side, so the note and indexed record carry the analysis id for the analyst
+to check back on later, instead of reporting an error that didn't happen. All six of `scanPrivateUrl`'s
+optional parameters (user agent, sandboxes, retention period, storage region, interaction sandbox,
+interaction timeout) are exposed as workflow inputs on the private workflow only; any left blank are omitted
+from the request entirely so GTI applies its own default rather than the workflow sending an empty override.
+`scanUrl` (the public workflow) takes no optional parameters at all - just the URL.
+
+One real behavioral difference between the two, confirmed live rather than assumed: a public scan's
+multi-engine analysis stats (`last_analysis_stats`, `reputation`, `total_votes`) are populated immediately on
+a fresh, never-before-seen URL, while a private scan's are not (private analysis is isolated from GTI's
+public multi-engine pipeline). Both workflows guard their note's Detection/Reputation/Community-votes
+sections on whether this data actually came back, rather than defaulting to `0` and rendering a false "0
+detections" for a URL nothing has actually analyzed yet.
+
 ## Destination indices
 
 One index per action, so responses of different shapes are never mixed.
@@ -183,10 +209,18 @@ One index per action, so responses of different shapes are never mixed.
 | GTI File Hash Relationships | `gti-soar-file-relationship` |
 | GTI URL Report | `gti-soar-url-report` |
 | GTI URL Relationships | `gti-soar-url-relationship` |
+| GTI URL Scan (Public) | `gti-soar-url-scan-public` |
+| GTI URL Scan (Private) | `gti-soar-url-scan-private` |
 
 **GTI MITRE ATT&CK Techniques**, **GTI IP Address Report**, **GTI Domain Report**, **GTI File Hash
-Report**, and **GTI URL Report** each write one document per observable, id
-`sha256("<alert id or 'manual'>-<observable>")`.
+Report**, **GTI URL Report**, **GTI URL Scan (Public)**, and **GTI URL Scan (Private)** each write one document per
+observable, id `sha256("<alert id or 'manual'>-<observable>")`. **GTI URL Scan (Public)** and **GTI URL Scan
+(Private)** are each their own separate index, distinct from GTI URL Report and from each other, even though
+all three retrieve the same underlying report object shape for a URL - a scan document represents that
+workflow's own submission (it carries the analysis id), and, unlike every other workflow's id scheme,
+re-running either scan workflow against the same URL triggers a genuinely new GTI submission each time
+rather than repeating a free, idempotent lookup; the id still refreshes the same document in place so
+re-runs don't pile up copies.
 **GTI File Sandbox Behaviour** writes one document *per sandbox report* returned for that hash (a hash with
 5 sandbox runs gets 5 documents), id `sha256("<alert id or 'manual'>-<observable>-<report id>")` — the same
 scheme with the report's own id folded in, so a document's identity survives a re-run regardless of which
@@ -212,21 +246,25 @@ readable identity is not lost, it just moves into the document body: every docum
 Every workflow handles this identically, on every trigger path: a failed fetch (after the standard 2
 retries) is never silent on any surface.
 
-- **Console**: always logs a line starting `STATUS: succeeded` / `STATUS: partial` (paginated workflows
-  only) / `STATUS: failed`, regardless of path or workflow.
+- **Console**: always logs a line starting `STATUS: succeeded` / `STATUS: partial` (paginated workflows,
+  when the safety backstop is hit; GTI URL Scan and GTI URL Scan (Private), when the poll loop's own
+  backstop is hit before GTI reports the scan complete) / `STATUS: failed`, regardless of path or workflow.
 - **Index**: a `fetch_failure` document is written for any non-`succeeded` outcome - `event.outcome:
   failure`, ECS `error.message`/`error.type` (left blank, not fabricated, when the underlying event genuinely
-  isn't an API error - e.g. the pagination safety backstop firing), plus the same correlation block every
-  document already carries. Same deterministic id scheme as every other document, so a re-run refreshes it
-  in place rather than piling up copies, and it never overwrites the last actually-successful document for
-  that observable.
+  isn't an API error - e.g. the pagination safety backstop firing, or either URL Scan workflow's own poll
+  timeout), plus the same correlation block every document already carries. Same deterministic id scheme as
+  every other document, so a re-run refreshes it in place rather than piling up copies, and it never
+  overwrites the last actually-successful document for that observable.
 - **Alert note** (paths 1/2 only - a standalone run has no alert to annotate): on `failed`, the note is
   **replaced** with a short status message pointing at the indexed failure record - including replacing a
   prior *successful* note, so a failed re-run is never mistaken for "nothing changed since last time." A
-  `partial` result still shows the real data collected, with an "Incomplete" or "safety limit reached"
-  callout, exactly as before this change.
-- **Tag**: never applied on `failed` (nothing was actually enriched). Still applied on `partial`, since real
-  data was retrieved even though the run didn't finish.
+  paginated workflow's `partial` result still shows the real data collected, with an "Incomplete" or "safety
+  limit reached" callout. Either URL Scan workflow's own `partial` is different in kind, not just in wording -
+  its scan genuinely has no report data yet (GTI is still processing it), so the note instead surfaces the
+  analysis id and says so plainly, pointing the analyst at re-running later or polling GTI directly.
+- **Tag**: never applied on `failed` (nothing was actually enriched). Still applied on `partial` - for a
+  paginated workflow, because real data was retrieved even though the run didn't finish; for either URL Scan
+  workflow, because a scan was genuinely submitted and is in flight, even though no report exists yet.
 
 ## Notes on the alert
 
