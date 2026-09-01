@@ -270,7 +270,7 @@ steps:
 
                     _Managed by the GTI URL Scan (Public) workflow. This note is replaced on every run; record your own analysis in a separate note._
 
-                    Observed on `{{ variables.field_name }}` - [View URL on GTI]({{ consts.gti_ui_base }}/{{ variables.observable | sha256 }})
+                    Observed on `{{ variables.field_name }}` - [View URL on GTI]({{ consts.gti_ui_base }}/{%- if variables.url_report_id != blank -%}{{ variables.url_report_id }}{%- else -%}{{ variables.observable | sha256 }}{%- endif -%})
                     Run [{{ workflow.name }}:{{ execution.id }}]({{ execution.url }})
 
                     ---
@@ -532,7 +532,7 @@ steps:
 
                     _Managed by the GTI URL Scan (Public) workflow. This note is replaced on every run; record your own analysis in a separate note._
 
-                    Observed on `{{ variables.field_name }}` - [View URL on GTI]({{ consts.gti_ui_base }}/{{ variables.observable | sha256 }})
+                    Observed on `{{ variables.field_name }}` - [View URL on GTI]({{ consts.gti_ui_base }}/{%- if variables.url_report_id != blank -%}{{ variables.url_report_id }}{%- else -%}{{ variables.observable | sha256 }}{%- endif -%})
                     Run [{{ workflow.name }}:{{ execution.id }}]({{ execution.url }})
 
                     ---
@@ -654,7 +654,7 @@ steps:
 
                     _Managed by the GTI URL Scan (Public) workflow. This note is replaced on every run; record your own analysis in a separate note._
 
-                    Observed on `{{ variables.field_name }}` - [View URL on GTI]({{ consts.gti_ui_base }}/{{ variables.observable | sha256 }})
+                    Observed on `{{ variables.field_name }}` - [View URL on GTI]({{ consts.gti_ui_base }}/{%- if variables.url_report_id != blank -%}{{ variables.url_report_id }}{%- else -%}{{ variables.observable | sha256 }}{%- endif -%})
                     Run [{{ workflow.name }}:{{ execution.id }}]({{ execution.url }})
 
                     ---
@@ -866,7 +866,7 @@ steps:
 
                     _Managed by the GTI URL Scan (Public) workflow. This note is replaced on every run; record your own analysis in a separate note._
 
-                    Observed on `{{ variables.field_name }}` - [View URL on GTI]({{ consts.gti_ui_base }}/{{ variables.observable | sha256 }})
+                    Observed on `{{ variables.field_name }}` - [View URL on GTI]({{ consts.gti_ui_base }}/{%- if variables.url_report_id != blank -%}{{ variables.url_report_id }}{%- else -%}{{ variables.observable | sha256 }}{%- endif -%})
                     Run [{{ workflow.name }}:{{ execution.id }}]({{ execution.url }})
 
                     ---
