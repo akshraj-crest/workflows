@@ -223,6 +223,20 @@ steps:
           observable: "{{ foreach.item.value }}"
           field_name: "{{ foreach.item.field }}"
 
+      # Best-effort mirror of GTI's own "bare host -> host/" id normalization, since this workflow has no real id to use instead.
+      - name: canonicalize_url
+        type: data.set
+        with:
+          canonical_url: |-
+            {%- assign u = variables.observable -%}
+            {%- assign parts = u | split: '://' -%}
+            {%- if parts.size == 2 -%}
+              {%- unless parts[1] contains '/' -%}
+                {%- assign u = u | append: '/' -%}
+              {%- endunless -%}
+            {%- endif -%}
+            {{ u }}
+
       - name: init_pagination
         type: data.set
         with:
@@ -260,6 +274,14 @@ steps:
             type: if
             condition: "${{ steps.get_url_relationship.error == blank }}"
             steps:
+              # links.self embeds GTI's own canonical id for the queried URL (e.g. ".../urls/<id>/redirects_to?..."), same id gti-url-report.yaml/gti-url-scan-public.yaml get from their own responses - no extra call needed.
+              - name: stash_real_url_id
+                type: data.set
+                with:
+                  real_url_id: |-
+                    {%- assign after = steps.get_url_relationship.output.links.self | split: '/urls/' -%}
+                    {%- if after.size == 2 -%}{{ after[1] | split: '/' | first }}{%- endif -%}
+
               # last_serving_ip_address and network_location return a single object rather than an array
               - name: stash_page
                 type: if
@@ -592,7 +614,7 @@ steps:
 
                     _Managed by the GTI URL Relationships workflow. This note is replaced on every run; record your own analysis in a separate note._
 
-                    Observed on `{{ variables.field_name }}` - [View URL on GTI]({{ consts.gti_ui_base }}/{{ variables.observable | sha256 }})
+                    Observed on `{{ variables.field_name }}` - [View URL on GTI]({{ consts.gti_ui_base }}/{%- if variables.real_url_id != blank -%}{{ variables.real_url_id }}{%- else -%}{{ variables.canonical_url | sha256 }}{%- endif -%})
                     Run [{{ workflow.name }}:{{ execution.id }}]({{ execution.url }})
 
                     ---
@@ -686,7 +708,7 @@ steps:
 
                 _Managed by the GTI URL Relationships workflow. This note is replaced on every run and describes only what this run fetched; record your own analysis in a separate note._
 
-                Observed on `{{ variables.field_name }}` - [View URL on GTI]({{ consts.gti_ui_base }}/{{ variables.observable | sha256 }})
+                Observed on `{{ variables.field_name }}` - [View URL on GTI]({{ consts.gti_ui_base }}/{%- if variables.real_url_id != blank -%}{{ variables.real_url_id }}{%- else -%}{{ variables.canonical_url | sha256 }}{%- endif -%})
                 Run [{{ workflow.name }}:{{ execution.id }}]({{ execution.url }})
 
                 ---
